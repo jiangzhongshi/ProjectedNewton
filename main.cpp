@@ -1,6 +1,61 @@
 #include "projected_newton.hpp"
 
-void main() {
+#include <iostream>
+
+#include <igl/flip_avoiding_line_search.h>
+#include <igl/writeDMAT.h>
+#include <igl/writeOBJ.h>
+#include <igl/writeOFF.h>
+#include <igl/read_triangle_mesh.h>
+#include <igl/boundary_loop.h>
+#include <igl/cat.h>
+#include <igl/doublearea.h>
+#include <igl/harmonic.h>
+#include <igl/map_vertices_to_circle.h>
+#include <igl/matrix_to_list.h>
+#include <igl/serialize.h>
+#include <Eigen/Cholesky>
+#include <Eigen/Sparse>
+#include <algorithm>
+#include <iostream>
+#include <unordered_map>
+#include <unordered_set>
+#include <igl/local_basis.h>
+#include <igl/grad.h>
+
+
+void prepare(const Eigen::MatrixXd &V, const Eigen::MatrixXi &F, spXd &Dx,
+             spXd &Dy) {
+  Eigen::MatrixXd F1, F2, F3;
+  igl::local_basis(V, F, F1, F2, F3);
+  Eigen::SparseMatrix<double> G;
+  igl::grad(V, F, G);
+  auto face_proj = [](Eigen::MatrixXd &F) {
+    std::vector<Eigen::Triplet<double>> IJV;
+    int f_num = F.rows();
+    for (int i = 0; i < F.rows(); i++) {
+      IJV.push_back(Eigen::Triplet<double>(i, i, F(i, 0)));
+      IJV.push_back(Eigen::Triplet<double>(i, i + f_num, F(i, 1)));
+      IJV.push_back(Eigen::Triplet<double>(i, i + 2 * f_num, F(i, 2)));
+    }
+    Eigen::SparseMatrix<double> P(f_num, 3 * f_num);
+    P.setFromTriplets(IJV.begin(), IJV.end());
+    return P;
+  };
+
+  Dx = face_proj(F1) * G;
+  Dy = face_proj(F2) * G;
+}
+
+spXd combine_Dx_Dy(const spXd &Dx, const spXd &Dy) {
+  // [Dx, 0; Dy, 0; 0, Dx; 0, Dy]
+  spXd hstack = igl::cat(1, Dx, Dy);
+  spXd empty(hstack.rows(), hstack.cols());
+  // gruesom way for Kronecker product.
+  return igl::cat(1, igl::cat(2, hstack, empty), igl::cat(2, empty, hstack));
+}
+
+int main() {
   Xd V;
   Xi F;
   Xd uv_init;
@@ -9,7 +64,7 @@ void main() {
   double mesh_area;
 
   igl::read_triangle_mesh(
-      "/home/zhongshi/Workspace/Scaffold-Map/models/camel_b.obj", V, F);
+      "/Users/zhongshi/Workspace/Scaffold-Map/models/camel_b.obj", V, F);
   igl::boundary_loop(F, bnd);
   igl::map_vertices_to_circle(V, bnd, bnd_uv);
   igl::harmonic(V, F, bnd, bnd_uv, 1, uv_init);
