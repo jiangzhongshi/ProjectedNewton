@@ -10,11 +10,11 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 # libigl
 option(LIBIGL_USE_STATIC_LIBRARY "" OFF)
-option(LIBIGL_WITH_OPENGL            "Use OpenGL"         ON)
-option(LIBIGL_WITH_OPENGL_GLFW       "Use GLFW"           ON)
-option(LIBIGL_WITH_TRIANGLE            "Use OpenGL"         ON)
+option(LIBIGL_WITH_OPENGL            "Use OpenGL"         OFF)
+option(LIBIGL_WITH_OPENGL_GLFW       "Use GLFW"           OFF)
+option(LIBIGL_WITH_TRIANGLE            "Use OpenGL"         OFF)
 option(LIBIGL_WITH_CGAL              "Use CGAL"           OFF)
-option(LIBIGL_WITH_OPENGL_GLFW_IMGUI "Use ImGui"          ON)
+option(LIBIGL_WITH_OPENGL_GLFW_IMGUI "Use ImGui"          OFF)
 
 find_package(LIBIGL QUIET)
 
@@ -27,4 +27,4 @@ if(UNIX)
 endif()
 
 add_executable(projnewton_bin main.cpp projected_newton.cpp)
-target_link_libraries(projnewton_bin igl::opengl igl::opengl_glfw igl::opengl_glfw_imgui)
+target_link_libraries(projnewton_bin igl::core)

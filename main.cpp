@@ -55,7 +55,23 @@ spXd combine_Dx_Dy(const spXd &Dx, const spXd &Dy) {
   return igl::cat(1, igl::cat(2, hstack, empty), igl::cat(2, empty, hstack));
 }
 
-int main() {
+#include <igl/slim.h>
+Xd timing_slim(const Xd &V, const Xi &F, const Xd &uv) {
+  igl::SLIMData data;
+  Eigen::VectorXi b;
+  Xd bc;
+  igl::Timer timer;
+  timer.start();
+  igl::slim_precompute(V, F, uv, data,
+                       igl::MappingEnergyType::SYMMETRIC_DIRICHLET, b, bc, 0.);
+  for (int i=0; i<100; i++){
+   igl::slim_solve(data, 1);
+   std::cout << "SLIM e="<<data.energy<<"\tTimer:"<<timer.getElapsedTime()<<std::endl;
+  }
+  return data.V_o;
+}
+
+int main(int argc, char* argv[]) {
   Xd V;
   Xi F;
   Xd uv_init;
@@ -63,8 +79,7 @@ int main() {
   Xd bnd_uv;
   double mesh_area;
 
-  igl::read_triangle_mesh(
-      "/Users/zhongshi/Workspace/Scaffold-Map/models/camel_b.obj", V, F);
+  igl::read_triangle_mesh(argv[1], V, F);
   igl::boundary_loop(F, bnd);
   igl::map_vertices_to_circle(V, bnd, bnd_uv);
   igl::harmonic(V, F, bnd, bnd_uv, 1, uv_init);
@@ -72,6 +87,8 @@ int main() {
   igl::doublearea(V, F, dblarea);
   dblarea *= 0.5;
   mesh_area = dblarea.sum();
+
+  // timing_slim(V,F,uv_init);
 
   spXd Dx, Dy, G;
   prepare(V, F, Dx, Dy);
@@ -88,14 +105,20 @@ int main() {
   std::cout << "Start Energy" << energy << std::endl;
   auto uv3 = uv_init;
   uv3.conservativeResize(V.rows(), 3);
-  igl::writeOBJ("camel_after_slim.obj", uv3, F);
-  for (int ii = 0; ii < 100; ii++) {
+  igl::Timer timer;
+  timer.start();
+  Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> solver;
+  for (int ii = 0; ii < 20; ii++) {
     spXd hessian;
     Vd grad;
+    double time0 = timer.getElapsedTime();
     double e1 = get_grad_and_hessian(G, dblarea, cur_uv, grad, hessian);
-    Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> solver;
-    solver.compute(hessian);
+    std::cout<<"grad"<<timer.getElapsedTime() - time0<<std::endl; time0 = timer.getElapsedTime();
+    if (ii==0) solver.analyzePattern(hessian);
+    solver.factorize(hessian);
+
     Xd newton = solver.solve(grad);
+    std::cout<<"newton"<<timer.getElapsedTime()-time0<<std::endl;
     if (solver.info() != Eigen::Success) {
       exit(1);
     }
@@ -104,10 +127,9 @@ int main() {
                                             energy * mesh_area) /
              mesh_area;
     std::cout << std::setprecision(25) << "Energy"
-              << compute_energy(cur_uv) / mesh_area << std::endl;
+              << compute_energy(cur_uv) / mesh_area << "\tTimer"<<timer.getElapsedTime()<< std::endl;
   }
   uv3 *= 0;
   uv3.leftCols(2) = cur_uv;
-  igl::writeOBJ("camel_after_newton.obj", uv3, F);
 }
 

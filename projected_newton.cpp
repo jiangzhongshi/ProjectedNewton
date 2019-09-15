@@ -1,6 +1,7 @@
 #include "projected_newton.hpp"
 
-#include <igl/local_basis.h>
+#include <iostream>
+#include <igl/Timer.h>
 
 namespace jakob {
 
@@ -34,7 +35,7 @@ double gradient_and_hessian_from_J(const Eigen::RowVector4d &J,
   double energy = symmetric_dirichlet_energy_t(J(0),J(1),J(2),J(3));
   double grad[4], hessian[10];
   reverse_diff(values, 1, grad);
-  reverse_hessian(values, 1, hessian);
+  forward_hessian(values, 1, hessian);
   local_grad << grad[0], grad[1], grad[2], grad[3];
   local_hessian << hessian[0], hessian[1], hessian[2], hessian[3], hessian[1], hessian[4], hessian[5], hessian[6], hessian[2], hessian[5], hessian[7], hessian[8], hessian[3], hessian[6], hessian[8], hessian[9];
   return energy;
@@ -51,6 +52,7 @@ double compute_energy_from_jacobian(const Xd &J, const Vd &area) {
   return e / area.sum();
 }
 
+#define AD_ENGINE desai
 double grad_and_hessian_from_jacobian(const Vd &area, const Xd &jacobian,
                                       Xd &total_grad, spXd &hessian) {
   int f_num = area.rows();
@@ -61,11 +63,14 @@ double grad_and_hessian_from_jacobian(const Vd &area, const Xd &jacobian,
   std::vector<Eigen::Triplet<double>> IJV;
   IJV.reserve(16 * f_num);
   double total_area = area.sum();
+
+  igl::Timer timer; 
+    timer.start();
   for (int i = 0; i < f_num; i++) {
     Eigen::RowVector4d J = jacobian.row(i);
     Eigen::Matrix4d local_hessian;
     Eigen::RowVector4d local_grad;
-    energy += desai::gradient_and_hessian_from_J(J, local_grad, local_hessian);
+    energy += AD_ENGINE::gradient_and_hessian_from_J(J, local_grad, local_hessian);
     local_grad *= area(i) / total_area;
     local_hessian *= area(i) / total_area;
 
@@ -76,7 +81,9 @@ double grad_and_hessian_from_jacobian(const Vd &area, const Xd &jacobian,
         IJV.push_back(Eigen::Triplet<double>(v1 * f_num + i, v2 * f_num + i,
                                              local_hessian(v1, v2)));
   }
+    timer.stop();
   hessian.setFromTriplets(IJV.begin(), IJV.end());
+  //  std::cout<<"Projection "<<timer.getElapsedTimeInMicroSec()<<std::endl;
   return energy;
 }
 
