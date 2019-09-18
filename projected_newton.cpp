@@ -35,7 +35,7 @@ double gradient_and_hessian_from_J(const Eigen::RowVector4d &J,
   double energy = symmetric_dirichlet_energy_t(J(0),J(1),J(2),J(3));
   double grad[4], hessian[10];
   reverse_diff(values, 1, grad);
-  forward_hessian(values, 1, hessian);
+  reverse_hessian(values, 1, hessian);
   local_grad << grad[0], grad[1], grad[2], grad[3];
   local_hessian << hessian[0], hessian[1], hessian[2], hessian[3], hessian[1], hessian[4], hessian[5], hessian[6], hessian[2], hessian[5], hessian[7], hessian[8], hessian[3], hessian[6], hessian[8], hessian[9];
   return energy;
