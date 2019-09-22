@@ -21,10 +21,17 @@ T symmetric_dirichlet_energy_t(T a, T b, T c, T d) {
 template <typename DerivedH>
 void project_hessian(Eigen::MatrixBase<DerivedH> &local_hessian) {
   Eigen::SelfAdjointEigenSolver<DerivedH> es(local_hessian);
-  Eigen::MatrixXd D = es.eigenvalues();
-  Eigen::MatrixXd U = es.eigenvectors();
-  for (int i = 0; i < D.rows(); i++) D(i) = (D(i) < 0) ? 0 : D(i);
-  local_hessian = U * D.asDiagonal() * U.inverse();
+  Eigen::Matrix<typename DerivedH::Scalar, -1, 1> D = es.eigenvalues();
+  DerivedH U = es.eigenvectors();
+  bool clamped = false;
+  for (int i = 0; i < D.size(); i++) {
+    if(D(i)< 0) {
+      D(i) = 0;
+      clamped = true;
+    }
+  }
+  if (clamped)
+    local_hessian = U * D.asDiagonal() * U.transpose();
 }
 
 double compute_energy_from_jacobian(const Eigen::MatrixXd &J, const Eigen::VectorXd &area);

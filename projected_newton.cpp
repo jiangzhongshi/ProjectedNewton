@@ -52,7 +52,7 @@ double compute_energy_from_jacobian(const Xd &J, const Vd &area) {
   return e / area.sum();
 }
 
-#define AD_ENGINE desai
+#define AD_ENGINE jakob
 double grad_and_hessian_from_jacobian(const Vd &area, const Xd &jacobian,
                                       Xd &total_grad, spXd &hessian) {
   int f_num = area.rows();
@@ -64,8 +64,7 @@ double grad_and_hessian_from_jacobian(const Vd &area, const Xd &jacobian,
   IJV.reserve(16 * f_num);
   double total_area = area.sum();
 
-  igl::Timer timer; 
-    timer.start();
+  std::vector<Eigen::Matrix4d> all_hessian(f_num);
   for (int i = 0; i < f_num; i++) {
     Eigen::RowVector4d J = jacobian.row(i);
     Eigen::Matrix4d local_hessian;
@@ -73,18 +72,21 @@ double grad_and_hessian_from_jacobian(const Vd &area, const Xd &jacobian,
     energy += AD_ENGINE::gradient_and_hessian_from_J(J, local_grad, local_hessian);
     local_grad *= area(i) / total_area;
     local_hessian *= area(i) / total_area;
-
+    all_hessian[i] = local_hessian;
     total_grad.row(i) = local_grad;
+  }
+  
+  hessian.reserve(Eigen::VectorXi::Constant(4*f_num,4));
+  for (int i = 0; i < f_num; i++) {
+    Eigen::Matrix4d local_hessian = all_hessian[i];
+
     project_hessian(local_hessian);
     for (int v1 = 0; v1 < 4; v1++)
-      for (int v2 = 0; v2 < 4; v2++)
-        IJV.push_back(Eigen::Triplet<double>(v1 * f_num + i, v2 * f_num + i,
-                                             local_hessian(v1, v2)));
+      for (int v2 = 0; v2 < v1+1; v2++)
+        hessian.insert(v1 * f_num + i, v2 * f_num + i) = local_hessian(v1, v2);
   }
-    timer.stop();
-  hessian.setFromTriplets(IJV.begin(), IJV.end());
-  //  std::cout<<"Projection "<<timer.getElapsedTimeInMicroSec()<<std::endl;
-  return energy;
+  hessian.makeCompressed();
+   return energy;
 }
 
 void jacobian_from_uv(const spXd &G, const Xd &uv, Xd &Ji) {
@@ -106,7 +108,7 @@ double get_grad_and_hessian(const spXd &G, const Vd &area, const Xd &uv,
   double energy = grad_and_hessian_from_jacobian(area, Ji, total_grad, hessian);
 
   Vd vec_grad = vec(total_grad);
-  hessian = G.transpose() * hessian * G;
+  hessian = G.transpose() * hessian.selfadjointView<Eigen::Lower>() * G;
   grad = vec_grad.transpose() * G;
 
   return energy;

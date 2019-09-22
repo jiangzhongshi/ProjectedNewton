@@ -111,14 +111,12 @@ int main(int argc, char* argv[]) {
   for (int ii = 0; ii < 20; ii++) {
     spXd hessian;
     Vd grad;
-    double time0 = timer.getElapsedTime();
     double e1 = get_grad_and_hessian(G, dblarea, cur_uv, grad, hessian);
-    std::cout<<"grad"<<timer.getElapsedTime() - time0<<std::endl; time0 = timer.getElapsedTime();
     if (ii==0) solver.analyzePattern(hessian);
     solver.factorize(hessian);
 
     Xd newton = solver.solve(grad);
-    std::cout<<"newton"<<timer.getElapsedTime()-time0<<std::endl;
+    // std::cout<<"newton"<<timer.getElapsedTime()-time0<<std::endl;
     if (solver.info() != Eigen::Success) {
       exit(1);
     }
