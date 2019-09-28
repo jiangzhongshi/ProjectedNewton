@@ -7,7 +7,7 @@ namespace jakob {
 
 #include "autodiff_jakob.h"
 DECLARE_DIFFSCALAR_BASE();
-using DScalar = DScalar2<double, Vd, Xd>;
+using DScalar = DScalar2<double, Eigen::Vector4d, Eigen::Matrix4d>;
 
 double gradient_and_hessian_from_J(const Eigen::RowVector4d &J,
                                    Eigen::RowVector4d &local_grad,
@@ -65,6 +65,7 @@ double grad_and_hessian_from_jacobian(const Vd &area, const Xd &jacobian,
   double total_area = area.sum();
 
   std::vector<Eigen::Matrix4d> all_hessian(f_num);
+  igl::Timer timer;timer.start();
   for (int i = 0; i < f_num; i++) {
     Eigen::RowVector4d J = jacobian.row(i);
     Eigen::Matrix4d local_hessian;
@@ -75,6 +76,7 @@ double grad_and_hessian_from_jacobian(const Vd &area, const Xd &jacobian,
     all_hessian[i] = local_hessian;
     total_grad.row(i) = local_grad;
   }
+  std::cout<<"AD Time"<<timer.getElapsedTimeInMicroSec()<<std::endl;
   
   hessian.reserve(Eigen::VectorXi::Constant(4*f_num,4));
   for (int i = 0; i < f_num; i++) {
