@@ -18,6 +18,14 @@ T symmetric_dirichlet_energy_t(T a, T b, T c, T d) {
 }
 
 
+template <typename Derived>
+inline auto symmetric_dirichlet_energy(const Eigen::MatrixBase<Derived>& a, 
+const Eigen::MatrixBase<Derived>& b, const Eigen::MatrixBase<Derived>& c, const Eigen::MatrixBase<Derived>& d) {
+  auto det = a.array() * d.array() - b.array() * c.array();
+  auto frob2 = a.array().abs2()+ b.array().abs2() + c.array().abs2() +d.array().abs2() ;
+  return (frob2 * (1 + (det).abs2().inverse())).matrix();
+}
+
 template <typename DerivedH>
 void project_hessian(Eigen::MatrixBase<DerivedH> &local_hessian) {
   Eigen::SelfAdjointEigenSolver<DerivedH> es(local_hessian);

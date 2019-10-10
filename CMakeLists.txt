@@ -28,3 +28,11 @@ endif()
 
 add_executable(projnewton_bin main.cpp projected_newton.cpp)
 target_link_libraries(projnewton_bin igl::core)
+
+add_executable(jakob_bin main.cpp projected_newton.cpp)
+target_link_libraries(jakob_bin igl::core)
+target_compile_definitions(jakob_bin PUBLIC AD_ENGINE=jakob)
+
+add_executable(desai_bin main.cpp projected_newton.cpp)
+target_link_libraries(desai_bin igl::core)
+target_compile_definitions(desai_bin PUBLIC AD_ENGINE=desai)

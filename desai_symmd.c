@@ -1,6 +1,6 @@
 // auto-generated from Deshana Desai
 
-void forward_diff(double values[], int num_points, double ders[]){
+void forward_diff(const double values[], int num_points, double ders[]){
 
 	for(int i = 0; i < num_points; ++i)
 	{
@@ -15,7 +15,7 @@ void forward_diff(double values[], int num_points, double ders[]){
 	}
 }
 
-void forward_hessian(double values[], int num_points, double ders[]){
+void forward_hessian(const double values[], int num_points, double ders[]){
 
 	for(int i = 0; i < num_points; ++i)
 	{
@@ -36,7 +36,7 @@ void forward_hessian(double values[], int num_points, double ders[]){
 	}
 }
 
-void reverse_hessian(double values[], int num_points, double ders[]){
+void reverse_hessian(const double values[], int num_points, double ders[]){
 
 	for(int i = 0; i < num_points; ++i)
 	{
@@ -60,7 +60,7 @@ void reverse_hessian(double values[], int num_points, double ders[]){
 
 
 
-void reverse_diff(double values[], int num_points, double ders[]){
+void reverse_diff(const double values[], int num_points, double ders[]){
 
 	for(int i = 0; i < num_points; ++i)
 	{
