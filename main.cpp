@@ -108,7 +108,7 @@ int main(int argc, char* argv[]) {
   igl::Timer timer;
   timer.start();
   Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> solver;
-  for (int ii = 0; ii < 50; ii++) {
+  for (int ii = 0; ii < 500; ii++) {
     spXd hessian;
     Vd grad;
     double e1 = get_grad_and_hessian(G, dblarea, cur_uv, grad, hessian);

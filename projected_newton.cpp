@@ -3,7 +3,7 @@
 #include <iostream>
 #include <igl/Timer.h>
 
-#define NOHESSIAN
+#define AD_ENGINE jakob
 namespace jakob {
 
 #include "autodiff_jakob.h"
@@ -38,24 +38,21 @@ namespace desai {
 double gradient_and_hessian_from_J(const Eigen::RowVector4d &J,
                                    Eigen::RowVector4d &local_grad,
                                    Eigen::Matrix4d &local_hessian) {
-  double values[4]={J(0),J(1),J(2),J(3)};
   double energy = symmetric_dirichlet_energy_t(J(0),J(1),J(2),J(3));
   double grad[4], hessian[10];
-  reverse_diff(values, 1, grad);
-  local_grad << grad[0], grad[1], grad[2], grad[3];
+  reverse_diff(J.data(), 1, local_grad.data());
 #ifndef NOHESSIAN
-  reverse_hessian(values, 1, hessian);
-  local_hessian << hessian[0], hessian[1], hessian[2], hessian[3], hessian[1], hessian[4], hessian[5], hessian[6], hessian[2], hessian[5], hessian[7], hessian[8], hessian[3], hessian[6], hessian[8], hessian[9];
+  reverse_hessian(J.data(), 1, local_hessian.data());
 #endif
   return energy;
   }
 
 Eigen::VectorXd gradient_and_hessian_from_J_vec(const Eigen::Matrix<double, -1, 4, Eigen::RowMajor> &J,
 Eigen::Matrix<double, -1, -1, Eigen::RowMajor> &grad,
-Eigen::Matrix<double, -1, -1, Eigen::RowMajor> &half_hessian) {
+Eigen::Matrix<double, -1, -1, Eigen::RowMajor> &hessian) {
   reverse_diff(J.data(), J.rows(), grad.data());
 #ifndef NOHESSIAN
-  reverse_hessian(J.data(), J.rows(), half_hessian.data());
+  reverse_hessian(J.data(), J.rows(), hessian.data());
   return symmetric_dirichlet_energy(J.col(0), J.col(1), J.col(2), J.col(3));
 #endif
   return Eigen::VectorXd();
@@ -80,12 +77,11 @@ double grad_and_hessian_from_jacobian(const Vd &area, const Xd &jacobian,
   double total_area = area.sum();
 
   std::vector<Eigen::Matrix4d> all_hessian(f_num);
-  igl::Timer timer;timer.start();
+  // igl::Timer timer;timer.start();
 #ifndef AD_ENGINE
-  Eigen::Matrix<double, -1, -1, Eigen::RowMajor> half_hessian(f_num,10);
+  Eigen::Matrix<double, -1, -1, Eigen::RowMajor> half_hessian(f_num,16);
   Eigen::Matrix<double, -1, -1, Eigen::RowMajor> local_grad(f_num, 4);
   Vd energy_vec = desai::gradient_and_hessian_from_J_vec(jacobian, local_grad, half_hessian);
-  std::cout<<"AD1 Time"<<timer.getElapsedTimeInMicroSec()<<std::endl;
 #ifndef NOHESSIAN
   energy = energy_vec.dot(area) / total_area;
   total_grad = area.asDiagonal()*local_grad / total_area;
@@ -112,7 +108,7 @@ double grad_and_hessian_from_jacobian(const Vd &area, const Xd &jacobian,
     #endif
   }
 #endif
-  std::cout<<"AD Time"<<timer.getElapsedTimeInMicroSec()<<std::endl;
+  // std::cout<<"AD Time"<<timer.getElapsedTimeInMicroSec()<<std::endl;
   
 #ifndef NOHESSIAN
   hessian.reserve(Eigen::VectorXi::Constant(4*f_num,4));
@@ -145,9 +141,7 @@ double get_grad_and_hessian(const spXd &G, const Vd &area, const Xd &uv,
   Xd Ji, total_grad;
   jacobian_from_uv(G, uv, Ji);
   double energy;
-for(int i=0;i<10;i++){
-   energy = grad_and_hessian_from_jacobian(area, Ji, total_grad, hessian);
-}exit(0);
+  energy = grad_and_hessian_from_jacobian(area, Ji, total_grad, hessian);
 
   Vd vec_grad = vec(total_grad);
   hessian = G.transpose() * hessian.selfadjointView<Eigen::Lower>() * G;
