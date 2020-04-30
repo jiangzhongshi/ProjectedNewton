@@ -103,6 +103,7 @@ int main(int argc, char *argv[]) {
 
   double energy = compute_energy(cur_uv) / mesh_area;
   std::cout << "Start Energy" << energy << std::endl;
+  double old_energy = energy;
   auto uv3 = uv_init;
   uv3.conservativeResize(V.rows(), 3);
   igl::Timer timer;
@@ -129,6 +130,9 @@ int main(int argc, char *argv[]) {
               << compute_energy(cur_uv) / mesh_area << "\tTimer"
               << timer.getElapsedTime() << "\tAD" << global_autodiff_time
               << std::endl;
+    if (std::abs(energy - old_energy) < 1e-10) 
+      break;
+    old_energy = energy;
   }
   uv3 *= 0;
   uv3.leftCols(2) = cur_uv;
