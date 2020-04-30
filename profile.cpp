@@ -73,7 +73,7 @@ Eigen::VectorXd gradient_and_hessian_from_J_vec(
     Eigen::Matrix<double, -1, -1, Eigen::RowMajor> &hessian) {
   reverse_diff(J.data(), J.rows(), grad.data());
 #ifndef NOHESSIAN
-  reverse_hessian(J.data(), J.rows(), hessian.data());
+  forward_hessian(J.data(), J.rows(), hessian.data());
 #endif
   return symmetric_dirichlet_energy(J.col(0), J.col(1), J.col(2), J.col(3));
 }

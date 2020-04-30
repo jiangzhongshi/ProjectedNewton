@@ -1,28 +1,26 @@
-#include "projected_newton.hpp"
-
-#include <iostream>
-
-#include <igl/flip_avoiding_line_search.h>
-#include <igl/writeDMAT.h>
-#include <igl/writeOBJ.h>
-#include <igl/writeOFF.h>
-#include <igl/read_triangle_mesh.h>
 #include <igl/boundary_loop.h>
 #include <igl/cat.h>
 #include <igl/doublearea.h>
+#include <igl/flip_avoiding_line_search.h>
+#include <igl/grad.h>
 #include <igl/harmonic.h>
+#include <igl/local_basis.h>
 #include <igl/map_vertices_to_circle.h>
 #include <igl/matrix_to_list.h>
+#include <igl/read_triangle_mesh.h>
 #include <igl/serialize.h>
+#include <igl/writeDMAT.h>
+#include <igl/writeOBJ.h>
+#include <igl/writeOFF.h>
+
 #include <Eigen/Cholesky>
 #include <Eigen/Sparse>
 #include <algorithm>
 #include <iostream>
 #include <unordered_map>
 #include <unordered_set>
-#include <igl/local_basis.h>
-#include <igl/grad.h>
 
+#include "projected_newton.hpp"
 
 void prepare(const Eigen::MatrixXd &V, const Eigen::MatrixXi &F, spXd &Dx,
              spXd &Dy) {
@@ -64,14 +62,16 @@ Xd timing_slim(const Xd &V, const Xi &F, const Xd &uv) {
   timer.start();
   igl::slim_precompute(V, F, uv, data,
                        igl::MappingEnergyType::SYMMETRIC_DIRICHLET, b, bc, 0.);
-  for (int i=0; i<100; i++){
-   igl::slim_solve(data, 1);
-   std::cout << "SLIM e="<<data.energy<<"\tTimer:"<<timer.getElapsedTime()<<std::endl;
+  for (int i = 0; i < 100; i++) {
+    igl::slim_solve(data, 1);
+    std::cout << "SLIM e=" << data.energy
+              << "\tTimer:" << timer.getElapsedTime() << std::endl;
   }
   return data.V_o;
 }
 
-int main(int argc, char* argv[]) {
+long global_autodiff_time = 0;
+int main(int argc, char *argv[]) {
   Xd V;
   Xi F;
   Xd uv_init;
@@ -92,7 +92,7 @@ int main(int argc, char* argv[]) {
 
   spXd Dx, Dy, G;
   prepare(V, F, Dx, Dy);
-  G = combine_Dx_Dy(Dx,Dy);
+  G = combine_Dx_Dy(Dx, Dy);
   auto cur_uv = uv_init;
 
   auto compute_energy = [&G, &dblarea, &mesh_area](Eigen::MatrixXd &aaa) {
@@ -111,8 +111,9 @@ int main(int argc, char* argv[]) {
   for (int ii = 0; ii < 500; ii++) {
     spXd hessian;
     Vd grad;
+    global_autodiff_time = 0;
     double e1 = get_grad_and_hessian(G, dblarea, cur_uv, grad, hessian);
-    if (ii==0) solver.analyzePattern(hessian);
+    if (ii == 0) solver.analyzePattern(hessian);
     solver.factorize(hessian);
 
     Xd newton = solver.solve(grad);
@@ -125,9 +126,10 @@ int main(int argc, char* argv[]) {
                                             energy * mesh_area) /
              mesh_area;
     std::cout << std::setprecision(25) << "Energy"
-              << compute_energy(cur_uv) / mesh_area << "\tTimer"<<timer.getElapsedTime()<< std::endl;
+              << compute_energy(cur_uv) / mesh_area << "\tTimer"
+              << timer.getElapsedTime() << "\tAD" << global_autodiff_time
+              << std::endl;
   }
   uv3 *= 0;
   uv3.leftCols(2) = cur_uv;
 }
-

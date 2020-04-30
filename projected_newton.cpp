@@ -64,7 +64,7 @@ double compute_energy_from_jacobian(const Xd &J, const Vd &area) {
   symmetric_dirichlet_energy(J.col(0), J.col(1), J.col(2), J.col(3)).dot(area) / area.sum();
 }
 
-
+extern long global_autodiff_time;
 double grad_and_hessian_from_jacobian(const Vd &area, const Xd &jacobian,
                                       Xd &total_grad, spXd &hessian) {
   int f_num = area.rows();
@@ -77,7 +77,7 @@ double grad_and_hessian_from_jacobian(const Vd &area, const Xd &jacobian,
   double total_area = area.sum();
 
   std::vector<Eigen::Matrix4d> all_hessian(f_num);
-  // igl::Timer timer;timer.start();
+  igl::Timer timer;timer.start();
 #ifndef AD_ENGINE
   Eigen::Matrix<double, -1, -1, Eigen::RowMajor> half_hessian(f_num,16);
   Eigen::Matrix<double, -1, -1, Eigen::RowMajor> local_grad(f_num, 4);
@@ -108,7 +108,7 @@ double grad_and_hessian_from_jacobian(const Vd &area, const Xd &jacobian,
     #endif
   }
 #endif
-  // std::cout<<"AD Time"<<timer.getElapsedTimeInMicroSec()<<std::endl;
+global_autodiff_time = timer.getElapsedTimeInMicroSec();
   
 #ifndef NOHESSIAN
   hessian.reserve(Eigen::VectorXi::Constant(4*f_num,4));

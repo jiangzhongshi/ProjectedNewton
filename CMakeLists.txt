@@ -26,18 +26,18 @@ if(UNIX)
   endif()
 endif()
 
-# add_executable(projnewton_bin main.cpp projected_newton.cpp)
-# target_link_libraries(projnewton_bin igl::core)
+add_executable(projnewton_bin main.cpp projected_newton.cpp)
+target_link_libraries(projnewton_bin igl::core)
 
 add_executable(jakob_bin main.cpp projected_newton.cpp)
 target_link_libraries(jakob_bin igl::core)
 target_compile_definitions(jakob_bin PUBLIC AD_ENGINE=jakob)
 
-# add_executable(desai_bin main.cpp projected_newton.cpp)
-# target_link_libraries(desai_bin igl::core)
-# target_compile_definitions(desai_bin PUBLIC AD_ENGINE=desai)
+add_executable(desai_bin main.cpp projected_newton.cpp)
+target_link_libraries(desai_bin igl::core)
+target_compile_definitions(desai_bin PUBLIC AD_ENGINE=desai)
 
 
-# add_executable(test_bin profile.cpp)
-# target_link_libraries(test_bin igl::core)
-# target_compile_features(test_bin PUBLIC cxx_std_17)
+add_executable(test_bin profile.cpp)
+target_link_libraries(test_bin igl::core)
+target_compile_features(test_bin PUBLIC cxx_std_17)
