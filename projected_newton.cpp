@@ -3,7 +3,6 @@
 #include <iostream>
 #include <igl/Timer.h>
 
-#define AD_ENGINE jakob
 namespace jakob {
 
 #include "autodiff_jakob.h"
