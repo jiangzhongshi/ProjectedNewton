@@ -12,6 +12,7 @@
 #include <igl/writeDMAT.h>
 #include <igl/writeOBJ.h>
 #include <igl/writeOFF.h>
+#include <igl/write_triangle_mesh.h>
 
 #include <Eigen/Cholesky>
 #include <Eigen/Sparse>
@@ -71,6 +72,7 @@ Xd timing_slim(const Xd &V, const Xi &F, const Xd &uv) {
 }
 
 long global_autodiff_time = 0;
+long global_project_time = 0;
 int main(int argc, char *argv[]) {
   Xd V;
   Xi F;
@@ -78,17 +80,18 @@ int main(int argc, char *argv[]) {
   Eigen::VectorXi bnd;
   Xd bnd_uv;
   double mesh_area;
+  Xd CN;
+  Xi FN;
 
   igl::read_triangle_mesh(argv[1], V, F);
   igl::boundary_loop(F, bnd);
   igl::map_vertices_to_circle(V, bnd, bnd_uv);
   igl::harmonic(V, F, bnd, bnd_uv, 1, uv_init);
+  igl::writeOBJ("in.obj", V, F, CN, FN, uv_init, F);
   Vd dblarea;
   igl::doublearea(V, F, dblarea);
   dblarea *= 0.5;
   mesh_area = dblarea.sum();
-
-  // timing_slim(V,F,uv_init);
 
   spXd Dx, Dy, G;
   prepare(V, F, Dx, Dy);
@@ -98,10 +101,10 @@ int main(int argc, char *argv[]) {
   auto compute_energy = [&G, &dblarea, &mesh_area](Eigen::MatrixXd &aaa) {
     Xd Ji;
     jacobian_from_uv(G, aaa, Ji);
-    return compute_energy_from_jacobian(Ji, dblarea) * mesh_area;
+    return compute_energy_from_jacobian(Ji, dblarea);
   };
 
-  double energy = compute_energy(cur_uv) / mesh_area;
+  double energy = compute_energy(cur_uv);
   std::cout << "Start Energy" << energy << std::endl;
   double old_energy = energy;
   auto uv3 = uv_init;
@@ -109,31 +112,36 @@ int main(int argc, char *argv[]) {
   igl::Timer timer;
   timer.start();
   Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> solver;
-  for (int ii = 0; ii < 500; ii++) {
+  for (int ii = 0; ii < 100000; ii++) {
     spXd hessian;
     Vd grad;
-    global_autodiff_time = 0;
+    // global_autodiff_time = 0;
     double e1 = get_grad_and_hessian(G, dblarea, cur_uv, grad, hessian);
-    if (ii == 0) solver.analyzePattern(hessian);
+    //  igl::Timer sol_timer;sol_timer.start();
+    if (ii == 0)
+      solver.analyzePattern(hessian);
     solver.factorize(hessian);
-
     Xd newton = solver.solve(grad);
+    // long sol_time = sol_timer.getElapsedTimeInMicroSec();
     // std::cout<<"newton"<<timer.getElapsedTime()-time0<<std::endl;
     if (solver.info() != Eigen::Success) {
       exit(1);
     }
-    Xd dest_res = cur_uv - Eigen::Map<Xd>(newton.data(), V.rows(), 2);
-    energy = igl::flip_avoiding_line_search(F, cur_uv, dest_res, compute_energy,
-                                            energy * mesh_area) /
-             mesh_area;
-    std::cout << std::setprecision(25) << "Energy"
-              << compute_energy(cur_uv) / mesh_area << "\tTimer"
-              << timer.getElapsedTime() << "\tAD" << global_autodiff_time
+    Xd new_dir = -Eigen::Map<Xd>(newton.data(), V.rows(), 2);
+    energy =
+        wolfe_linesearch(F, cur_uv, new_dir, compute_energy, grad, energy);
+    // long search_time = sol_timer.getElapsedTimeInMicroSec() - sol_time;
+    std::cout << "It" << ii << std::setprecision(20)
+              << "\tE=" << compute_energy(cur_uv) << "\tTimer"
+              << timer.getElapsedTime() << "\tAD"
+              << global_autodiff_time
               << std::endl;
-    if (std::abs(energy - old_energy) < 1e-10) 
+    if (std::abs(energy - 4)< 1e-10)
+    // if (std::abs(energy - old_energy) < 1e-9)
       break;
     old_energy = energy;
   }
   uv3 *= 0;
   uv3.leftCols(2) = cur_uv;
+  igl::writeOBJ("out.obj", V, F, CN, FN, cur_uv, F);
 }
